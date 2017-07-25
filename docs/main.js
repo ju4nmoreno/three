@@ -3,41 +3,30 @@ function init() {
   var gui = new dat.GUI();
   var clock = new THREE.Clock();
 
-  var enableFog = false;
+  var enableFog = true;
 
   if (enableFog) {
-    scene.fog = new THREE.FogExp2(0xffffff, 0.2);
+    scene.fog = new THREE.FogExp2(0xffffff, 0.07);
   }
   
-  var plane = getPlane(30);
+  var plane = getPlane(100);
   var directionalLight = getDirectionalLight(1);
   var sphere = getSphere(0.05);
-  var boxGrid = getBoxGrid(10, 1.5);
-  boxGrid.name = 'boxGrid';
-  var helper = new THREE.CameraHelper(directionalLight.shadow.camera);
-  var ambientLight = getAmbientLight(1);
-
+  var boxGrid = getBoxGrid(20, 2.5);
 
   plane.name = 'plane-1';
+  boxGrid.name = 'boxGrid';
 
   plane.rotation.x = Math.PI/2;
-  directionalLight.position.x = 6;
-  directionalLight.position.y = 5;
+  directionalLight.position.x = 13;
+  directionalLight.position.y = 10;
   directionalLight.position.z = 10;
   directionalLight.intensity = 2;
-
 
   scene.add(plane);
   directionalLight.add(sphere);
   scene.add(directionalLight);
   scene.add(boxGrid);
-  scene.add(helper);
-  scene.add(ambientLight);
-
-  gui.add(directionalLight, 'intensity', 0, 10);
-  gui.add(directionalLight.position, 'x', 0, 20);
-  gui.add(directionalLight.position, 'y', 0, 20);
-  gui.add(directionalLight.position, 'z', 0, 20);
 
   var camera = new THREE.PerspectiveCamera(
     45,
@@ -46,15 +35,61 @@ function init() {
     1000
   );
 
-  camera.position.x = 17;
-  camera.position.y = 15;
-  camera.position.z = 9;
+  var cameraZPosition = new THREE.Group(),
+      cameraZRotation = new THREE.Group(),
+      cameraYposition = new THREE.Group(),
+      cameraXRotation = new THREE.Group(),
+      cameraYRotation = new THREE.Group();
 
-  gui.add(camera.position, 'x', 0, 20);
-  gui.add(camera.position, 'y', 0, 20);
-  gui.add(camera.position, 'z', 0, 20);
 
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  cameraZRotation.name = 'cameraZRotation';
+  cameraZPosition.name = 'cameraZPosition';
+  cameraYposition.name = 'cameraYposition';
+  cameraXRotation.name = 'cameraXRotation';
+  cameraYRotation.name = 'cameraYRotation';
+
+  cameraZRotation.add(camera);
+  cameraYposition.add(cameraZRotation);
+  cameraZPosition.add(cameraYposition);
+  cameraXRotation.add(cameraZPosition);
+  cameraYRotation.add(cameraXRotation);
+  scene.add(cameraYRotation);
+
+
+  cameraXRotation.rotation.x = -Math.PI/2;
+  cameraYposition.position.y = 1;
+  cameraZPosition.position.z = 100;
+
+  new TWEEN.Tween({val: 50})
+      .to({val: -16}, 12000)
+      .easing(TWEEN.Easing.Circular.Out)
+      .onUpdate(function() {
+        cameraZPosition.position.z = this.val;
+      })
+      .start();
+
+  new TWEEN.Tween({val: -Math.PI/2})
+      .to({val: 0}, 3000)
+      .delay(1000)
+      .easing(TWEEN.Easing.Cubic.Out)
+      .onUpdate(function () {
+        cameraXRotation.rotation.x = this.val;
+      })
+      .start();
+
+  new TWEEN.Tween({val: 0})
+      .to({val: Math.PI/2}, 3000)
+      .delay(1000)
+      .easing(TWEEN.Easing.Cubic.Out)
+      .onUpdate(function () {
+        cameraYRotation.rotation.y = this.val;
+      })
+      .start();
+  
+  gui.add(cameraZPosition.position, 'z', 0, 100);
+  gui.add(cameraYRotation.rotation, 'y', -Math.PI, Math.PI);
+  gui.add(cameraXRotation.rotation, 'x', -Math.PI, Math.PI);
+  gui.add(cameraZRotation.rotation, 'z', -Math.PI, Math.PI);
 
   var renderer = new THREE.WebGLRenderer();
   renderer.shadowMap.enabled = true;
@@ -87,12 +122,12 @@ function getBoxGrid(amount, separationMultiplier) {
   var group = new THREE.Group();
 
   for (var i=0; i<amount; i++) {
-    var obj = getBox(1, 1, 1);
+    var obj = getBox(1, 3, 1);
     obj.position.x = i * separationMultiplier;
     obj.position.y = obj.geometry.parameters.height/2;
     group.add(obj);
     for (var j=1; j<amount; j++) {
-      var obj = getBox(1, 1, 1);
+      var obj = getBox(1, 3, 1);
       obj.position.x = i * separationMultiplier;
       obj.position.y = obj.geometry.parameters.height/2;
       obj.position.z = j * separationMultiplier;
@@ -144,9 +179,10 @@ function getPointLight(intensity) {
 function getSpotLight(intensity) {
   var light = new THREE.SpotLight(0xffffff, intensity);
   light.castShadow = true;
+
   light.shadow.bias = 0.001;
-  light.shadow.mapSize.width =  2048;
-  light.shadow.mapSize.height =  2048;
+  light.shadow.mapSize.width = 2048;
+  light.shadow.mapSize.height = 2048;
 
   return light;
 }
@@ -155,16 +191,13 @@ function getDirectionalLight(intensity) {
   var light = new THREE.DirectionalLight(0xffffff, intensity);
   light.castShadow = true;
 
-  light.shadow.camera.left = -10;
-  light.shadow.camera.bottom = -10;
-  light.shadow.camera.right = 10;
-  light.shadow.camera.top = 10;
+  light.shadow.camera.left = -40;
+  light.shadow.camera.bottom = -40;
+  light.shadow.camera.right = 40;
+  light.shadow.camera.top = 40;
 
-  return light;
-}
-
-function getAmbientLight(intensity) {
-  var light = new THREE.AmbientLight('rgb(10, 30, 50)', intensity);
+  light.shadow.mapSize.width = 4096;
+  light.shadow.mapSize.height = 4096;
 
   return light;
 }
@@ -174,20 +207,22 @@ function update(renderer, scene, camera, controls, clock) {
     scene,
     camera
   );
+
   controls.update();
+  TWEEN.update();
 
   var timeElapsed = clock.getElapsedTime();
 
+
+  //var cameraZRotation = scene.getObjectByName('cameraZRotation');
+  //cameraZRotation.rotation.z = noise.simplex2(timeElapsed * 1.5, timeElapsed * 1.5) * 0.02;
+
   var boxGrid = scene.getObjectByName('boxGrid');
   boxGrid.children.forEach(function(child, index) {
-    //var x = timeElapsed * 5 + index;
-    child.scale.y = (Math.sin(timeElapsed * 5 + index) + 1) / 2 + 0.001;
-    //child.scale.y = (noise.simplex2(x, x) + 1) / 2 + 0.001;
+    var x = timeElapsed + index;
+    child.scale.y = (noise.simplex2(x, x) + 1) / 2 + 0.001;
     child.position.y = child.scale.y/2;
-
   });
-
-
 
   requestAnimationFrame(function() {
     update(renderer, scene, camera, controls, clock);
@@ -195,3 +230,29 @@ function update(renderer, scene, camera, controls, clock) {
 }
 
 var scene = init();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
